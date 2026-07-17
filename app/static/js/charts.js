@@ -9,8 +9,9 @@ const CHART_COLORS = {
   red: '#f87171'
 };
 
-const GRID_COLOR = 'rgba(255, 255, 255, 0.05)';
-const TEXT_COLOR = '#94a3b8';
+const isLightTheme = document.documentElement.classList.contains('theme-light') || localStorage.getItem('theme') === 'light';
+const GRID_COLOR = isLightTheme ? 'rgba(15, 23, 42, 0.08)' : 'rgba(255, 255, 255, 0.05)';
+const TEXT_COLOR = isLightTheme ? '#475569' : '#94a3b8';
 
 function getStatusColor(status) {
   const s = status.toLowerCase();

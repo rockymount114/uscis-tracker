@@ -14,6 +14,29 @@
     <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
     <!-- Chart.js 4.x -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Prevent Theme Flash -->
+    <script>
+        (function() {
+            const autoTheme = localStorage.getItem('autoTheme') !== 'false';
+            if (autoTheme) {
+                const hour = new Date().getHours();
+                const systemPrefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+                const isLight = (hour >= 7 && hour < 19) || systemPrefersLight;
+                if (isLight) {
+                    document.documentElement.classList.add('theme-light');
+                } else {
+                    document.documentElement.classList.remove('theme-light');
+                }
+            } else {
+                const savedTheme = localStorage.getItem('theme') || 'dark';
+                if (savedTheme === 'light') {
+                    document.documentElement.classList.add('theme-light');
+                } else {
+                    document.documentElement.classList.remove('theme-light');
+                }
+            }
+        })();
+    </script>
     {% block head %}{% endblock %}
 </head>
 <body>
@@ -27,16 +50,24 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav ms-auto align-items-center">
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">
                             <i class="fa-solid fa-chart-pie me-1"></i>Dashboard
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item me-3">
                         <a class="nav-link {% if 'cases.' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('cases.list_cases') }}">
                             <i class="fa-solid fa-folder-open me-1"></i>Tracked Cases
                         </a>
+                    </li>
+                    <li class="nav-item mt-2 mt-lg-0">
+                        <div class="theme-controls">
+                            <button class="auto-badge active" id="autoBadge" onclick="toggleAutoTheme()" title="Toggle auto day/night mode">⚡ AUTO</button>
+                            <button class="theme-toggle-btn" onclick="toggleThemeManual()" title="Toggle dark / light mode">
+                                <div class="toggle-thumb" id="toggleThumb">☀️</div>
+                            </button>
+                        </div>
                     </li>
                 </ul>
             </div>
@@ -73,6 +104,81 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Custom Charts Wrapper -->
     <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    
+    <!-- Theme Toggle Scripts -->
+    <script>
+        function updateThemeUI(theme, autoActive) {
+            const isLight = (theme === 'light');
+            if (isLight) {
+                document.documentElement.classList.add('theme-light');
+            } else {
+                document.documentElement.classList.remove('theme-light');
+            }
+            
+            const autoBadge = document.getElementById('autoBadge');
+            if (autoBadge) {
+                if (autoActive) {
+                    autoBadge.classList.add('active');
+                } else {
+                    autoBadge.classList.remove('active');
+                }
+            }
+            
+            const toggleThumb = document.getElementById('toggleThumb');
+            if (toggleThumb) {
+                toggleThumb.innerHTML = isLight ? '🌙' : '☀️';
+            }
+        }
+
+        function applyAutoTheme() {
+            const hour = new Date().getHours();
+            const systemPrefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+            const isLight = (hour >= 7 && hour < 19) || systemPrefersLight;
+            const theme = isLight ? 'light' : 'dark';
+            updateThemeUI(theme, true);
+        }
+
+        function toggleAutoTheme() {
+            const currentlyAuto = localStorage.getItem('autoTheme') !== 'false';
+            const newAuto = !currentlyAuto;
+            localStorage.setItem('autoTheme', newAuto ? 'true' : 'false');
+            
+            if (newAuto) {
+                applyAutoTheme();
+            } else {
+                const savedTheme = localStorage.getItem('theme') || 'dark';
+                updateThemeUI(savedTheme, false);
+            }
+            
+            if (document.querySelector('canvas')) {
+                window.location.reload();
+            }
+        }
+
+        function toggleThemeManual() {
+            localStorage.setItem('autoTheme', 'false');
+            const currentThemeIsLight = document.documentElement.classList.contains('theme-light');
+            const newTheme = currentThemeIsLight ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+            updateThemeUI(newTheme, false);
+            
+            if (document.querySelector('canvas')) {
+                window.location.reload();
+            }
+        }
+
+        // Initialize UI State
+        (function() {
+            const autoTheme = localStorage.getItem('autoTheme') !== 'false';
+            if (autoTheme) {
+                document.addEventListener('DOMContentLoaded', applyAutoTheme);
+            } else {
+                const savedTheme = localStorage.getItem('theme') || 'dark';
+                document.addEventListener('DOMContentLoaded', () => updateThemeUI(savedTheme, false));
+            }
+        })();
+    </script>
+
     {% block scripts %}{% endblock %}
 </body>
 </html>
