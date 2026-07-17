@@ -5,24 +5,19 @@ from bs4 import BeautifulSoup
 def fetch_case_status(receipt_number):
     """
     Fetches the actual status of a USCIS case given its receipt number.
+    Uses curl_cffi to bypass Cloudflare TLS fingerprint blocks.
     Returns a dict {"status": status, "detail": detail, "is_simulated": False} if successful.
-    If the request fails or is blocked by Cloudflare (HTTP 403), it falls back to a deterministic 
-    simulated status flagged with "is_simulated": True.
+    If the connection is blocked or fails, it only returns a simulated fallback if
+    ALLOW_SIMULATED_DATA=true is defined in the environment. Otherwise, it returns None.
     """
     uscis_url = os.getenv("USCIS_API_URL", "https://egov.uscis.gov/casestatus/mycasestatus.do")
     
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    
     try:
-        response = requests.post(
+        from curl_cffi import requests as c_requests
+        response = c_requests.post(
             uscis_url, 
             data={'appReceiptNum': receipt_number, 'initCaseSearch': 'CHECK STATUS'}, 
-            headers=headers,
+            impersonate="chrome120",
             timeout=10
         )
         
@@ -47,10 +42,19 @@ def fetch_case_status(receipt_number):
                 if "Your current status:" in status_text:
                     status_text = status_text.replace("Your current status:", "").strip()
                 return {"status": status_text, "detail": "", "is_simulated": False}
+                
+            # If the request succeeded but we couldn't find any status block, the receipt number is invalid
+            print(f"USCIS portal returned 200 but no status found for {receipt_number}. The receipt number is invalid.")
+            return None
     except Exception as e:
-        print(f"Error fetching status from USCIS for {receipt_number}: {e}")
+        print(f"Connection error or block when querying USCIS for {receipt_number}: {e}")
         
-    return get_simulated_status(receipt_number)
+    # Check if simulated fallback is explicitly allowed for local testing/development
+    allow_simulated = os.getenv("ALLOW_SIMULATED_DATA", "false").lower() == "true"
+    if allow_simulated:
+        return get_simulated_status(receipt_number)
+        
+    return None
 
 def get_simulated_status(receipt_number):
     # Deterministic simulated statuses using receipt number characters sum
