@@ -33,7 +33,25 @@ def fetch_case_status(receipt_number):
             if status_div:
                 h1_text = status_div.find('h1')
                 if h1_text:
-                    return h1_text.text.strip()
+                    status = h1_text.text.strip()
+                    # Check for USPS tracking number in detailed paragraph
+                    p_text = status_div.find('p')
+                    if p_text:
+                        import re
+                        tracking_match = re.search(r'\b(9\d{21}|[A-Z]{2}\d{9}US)\b', p_text.text)
+                        if tracking_match:
+                            status = f"{status} (USPS Tracking: {tracking_match.group(1)})"
+                        
+                        # Check for RFE/action deadline in the paragraph (e.g., respond by October 15, 2026)
+                        deadline_match = re.search(r'(?:respond by|received by)\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})', p_text.text, re.IGNORECASE)
+                        if deadline_match:
+                            try:
+                                from datetime import datetime as dt
+                                parsed_date = dt.strptime(deadline_match.group(1), "%B %d, %Y")
+                                status = f"{status} (Respond by {parsed_date.strftime('%Y-%m-%d')})"
+                            except Exception:
+                                pass
+                    return status
             
             # Check alternate USCIS layout
             current_status_sec = soup.find('div', class_='current-status-sec')
@@ -64,4 +82,14 @@ def get_mock_status(receipt_number):
         "Case Was Reopened"
     ]
     val = sum(ord(c) for c in receipt_number)
-    return statuses[val % len(statuses)]
+    status = statuses[val % len(statuses)]
+    if status in ["Card Was Delivered To Me By The Post Office", "Card Was Mailed To Me"]:
+        # Generate a deterministic 22-digit USPS tracking number
+        tracking_num = f"9205590153070156{100000 + (val % 899999)}"
+        status = f"{status} (USPS Tracking: {tracking_num})"
+    elif status == "Request for Additional Evidence Was Sent":
+        # Generate a deterministic RFE deadline 87 days in the future
+        from datetime import datetime, timedelta
+        deadline_date = (datetime.utcnow() + timedelta(days=87)).strftime('%Y-%m-%d')
+        status = f"{status} (Respond by {deadline_date})"
+    return status

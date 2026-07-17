@@ -1,14 +1,50 @@
 {% extends "base.html" %}
 {% from "components/case_card.html" import render_case_card %}
-{% from "components/case_form.html" import render_case_form %}
 
 {% block title %}Tracked Cases - USCIS Case Tracker{% endblock %}
 
 {% block content %}
+<!-- Track New Case Horizontal Form (under navigation bar) -->
+<div class="row mb-4 fade-in-up">
+    <div class="col-12">
+        <div class="card glass-card">
+            <div class="card-body py-3">
+                <form action="{{ url_for('cases.add_case') }}" method="POST" class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="receipt_number" class="form-label text-secondary fw-semibold mb-1" style="font-size: 0.8rem;">USCIS Receipt Number</label>
+                        <input type="text" class="form-control form-control-custom font-monospace" id="receipt_number" name="receipt_number" 
+                               placeholder="E.g., MSC2190123456" required pattern="[a-zA-Z]{3}[0-9]{10}" title="Must start with 3 letters followed by 10 digits"
+                               style="letter-spacing: 0.1em; text-transform: uppercase; padding: 0.5rem 0.75rem !important; font-size: 0.85rem;">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="form_type" class="form-label text-secondary fw-semibold mb-1" style="font-size: 0.8rem;">Form Type</label>
+                        <select class="form-select form-control-custom" id="form_type" name="form_type" required style="padding: 0.5rem 0.75rem !important; font-size: 0.85rem;">
+                            <option value="" disabled selected>-- Select Form Type --</option>
+                            {% for ft in form_types %}
+                                <option value="{{ ft }}">{{ ft }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="nickname" class="form-label text-secondary fw-semibold mb-1" style="font-size: 0.8rem;">Nickname (Optional)</label>
+                        <input type="text" class="form-control form-control-custom" id="nickname" name="nickname" 
+                               placeholder="E.g., Primary Applicant I-485" style="padding: 0.5rem 0.75rem !important; font-size: 0.85rem;">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-gradient-primary w-100" style="padding: 0.5rem 1rem; font-size: 0.85rem; height: 38px; font-weight: 600;">
+                            <i class="fa-solid fa-plus me-1"></i>Track Case
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row align-items-center mb-4 fade-in-up">
     <div class="col-md-8">
         <h1 class="mb-1 text-light" style="font-weight: 800; font-size: 2.2rem; letter-spacing: -0.03em;">Tracked Cases</h1>
-        <p class="text-secondary mb-0">Add, edit, or check current processing status of USCIS applications.</p>
+        <p class="text-secondary mb-0">Track and check current processing status of USCIS applications.</p>
     </div>
     {% if cases %}
         <div class="col-md-4 text-md-end mt-3 mt-md-0">
@@ -21,40 +57,138 @@
     {% endif %}
 </div>
 
-<div class="row g-4">
-    <!-- Left Column: Add Case Form -->
-    <div class="col-lg-4 col-md-12 fade-in-up">
-        <div class="card glass-card">
-            <div class="card-body">
-                <h4 class="card-title text-light mb-4" style="font-size: 1.25rem; font-weight: 700; border-left: 3px solid var(--accent-purple); padding-left: 0.5rem;">
-                    Track New Case
-                </h4>
-                {{ render_case_form(url_for('cases.add_case'), form_types=form_types) }}
+{% if cases %}
+<!-- Filter Bar -->
+<div class="row mb-4 fade-in-up">
+    <div class="col-12">
+        <div class="card glass-card" style="background: rgba(22, 28, 45, 0.45);">
+            <div class="card-body py-2 px-3">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-2 text-secondary fw-semibold text-nowrap" style="font-size: 0.85rem;">
+                        <i class="fa-solid fa-filter me-1.5 text-purple" style="color: var(--accent-purple);"></i>Filter Cases:
+                    </div>
+                    <div class="col-md-5">
+                        <div class="position-relative">
+                            <input type="text" id="searchNickname" class="form-control form-control-custom" placeholder="Search by nickname or receipt number..." style="font-size: 0.85rem; padding: 0.4rem 0.75rem 0.4rem 2.2rem !important;">
+                            <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 0.85rem;"></i>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="filterFormType" class="form-select form-control-custom" style="font-size: 0.85rem; padding: 0.4rem 1.75rem 0.4rem 0.75rem !important;">
+                            <option value="">All Case Types (Form Types)</option>
+                            {% set unique_types = [] %}
+                            {% for case in cases %}
+                                {% if case.form_type not in unique_types %}
+                                    {% set _ = unique_types.append(case.form_type) %}
+                                {% endif %}
+                            {% endfor %}
+                            {% for ft in unique_types|sort %}
+                                <option value="{{ ft }}">{{ ft }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 text-end">
+                        <button id="resetFilters" class="btn btn-sm btn-glass w-100" style="font-size: 0.85rem; padding: 0.4rem 0.75rem;">
+                            <i class="fa-solid fa-arrow-rotate-left me-1"></i>Reset
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    
-    <!-- Right Column: Cases Grid -->
-    <div class="col-lg-8 col-md-12">
+</div>
+{% endif %}
+
+<div class="row g-4 fade-in-up">
+    <!-- Cases Grid (Full Width) -->
+    <div class="col-12">
         {% if not cases %}
-            <div class="card glass-card py-5 text-center fade-in-up">
+            <div class="card glass-card py-5 text-center">
                 <div class="card-body py-5">
                     <div class="mb-3" style="color: var(--text-muted);">
                         <i class="fa-regular fa-folder-open" style="font-size: 4rem;"></i>
                     </div>
                     <h4 class="text-light mb-2">No Cases Tracked Yet</h4>
-                    <p class="text-secondary mb-0">Use the form on the left to start tracking your first USCIS receipt number.</p>
+                    <p class="text-secondary mb-0">Use the form above to start tracking your first USCIS receipt number.</p>
                 </div>
             </div>
         {% else %}
             <div class="row g-3">
                 {% for case in cases %}
-                    <div class="col-md-6 col-sm-12">
+                    <div class="col-lg-4 col-md-6 col-sm-12 case-card-container"
+                         data-form-type="{{ case.form_type }}"
+                         data-nickname="{{ case.nickname | lower if case.nickname else '' }}"
+                         data-receipt="{{ case.receipt_number | lower }}">
                         {{ render_case_card(case) }}
                     </div>
                 {% endfor %}
+                
+                <!-- No matching cases alert (hidden by default) -->
+                <div id="noCasesAlert" class="col-12 d-none">
+                    <div class="card glass-card py-5 text-center">
+                        <div class="card-body">
+                            <div class="mb-3 text-muted">
+                                <i class="fa-solid fa-filter-circle-xmark" style="font-size: 3.5rem;"></i>
+                            </div>
+                            <h4 class="text-light mb-2">No Matching Cases Found</h4>
+                            <p class="text-secondary mb-0">Try adjusting your filters or search text.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchNickname');
+    const filterFormType = document.getElementById('filterFormType');
+    const resetFilters = document.getElementById('resetFilters');
+    const caseCards = document.querySelectorAll('.case-card-container');
+    const noCasesAlert = document.getElementById('noCasesAlert');
+
+    function filterCases() {
+        const searchText = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const selectedType = filterFormType ? filterFormType.value : '';
+        let visibleCount = 0;
+
+        caseCards.forEach(card => {
+            const cardNickname = card.getAttribute('data-nickname');
+            const cardReceipt = card.getAttribute('data-receipt');
+            const cardFormType = card.getAttribute('data-form-type');
+
+            const matchesSearch = !searchText || cardNickname.includes(searchText) || cardReceipt.includes(searchText);
+            const matchesType = !selectedType || cardFormType === selectedType;
+
+            if (matchesSearch && matchesType) {
+                card.classList.remove('d-none');
+                visibleCount++;
+            } else {
+                card.classList.add('d-none');
+            }
+        });
+
+        if (noCasesAlert) {
+            if (visibleCount === 0) {
+                noCasesAlert.classList.remove('d-none');
+            } else {
+                noCasesAlert.classList.add('d-none');
+            }
+        }
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterCases);
+    if (filterFormType) filterFormType.addEventListener('change', filterCases);
+    if (resetFilters) {
+        resetFilters.addEventListener('click', function() {
+            if (searchInput) searchInput.value = '';
+            if (filterFormType) filterFormType.value = '';
+            filterCases();
+        });
+    }
+});
+</script>
 {% endblock %}
