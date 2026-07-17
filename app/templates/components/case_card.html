@@ -5,9 +5,16 @@
     <div class="card-body d-flex flex-column p-3" style="min-height: 220px;">
         <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
-                <span class="badge px-2 py-1 rounded-pill mb-1.5 d-inline-block" style="background: linear-gradient(135deg, var(--accent-indigo) 0%, var(--accent-purple) 100%); font-weight: 600; font-size: 0.7rem;">
-                    {{ case.form_type }}
-                </span>
+                <div class="d-flex align-items-center gap-1.5 mb-1.5">
+                    <span class="badge px-2 py-1 rounded-pill d-inline-block" style="background: linear-gradient(135deg, var(--accent-indigo) 0%, var(--accent-purple) 100%); font-weight: 600; font-size: 0.7rem; line-height: 1;">
+                        {{ case.form_type }}
+                    </span>
+                    {% if case.is_simulated %}
+                        <span class="badge bg-warning text-dark px-1.5 py-0.5 rounded-pill d-inline-block fw-bold" style="font-size: 0.55rem; line-height: 1.2;" title="USCIS portal blocked connection, showing deterministic simulated data instead.">
+                            <i class="fa-solid fa-triangle-exclamation me-0.5"></i>Simulated
+                        </span>
+                    {% endif %}
+                </div>
                 <h6 class="card-title mb-1 font-monospace text-light fw-bold" style="letter-spacing: 0.05em; font-size: 0.95rem;">{{ case.receipt_number }}</h6>
                 <div class="text-secondary fw-normal mb-1.5" style="font-size: 0.75rem;">
                     <i class="fa-solid fa-building-columns me-1" style="color: var(--accent-cyan); font-size: 0.7rem;"></i>{{ case.service_center }}

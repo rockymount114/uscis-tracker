@@ -14,8 +14,9 @@ class Case(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     usps_tracking = db.Column(db.String(30), nullable=True)
     mailed_date = db.Column(db.DateTime, nullable=True)
+    is_simulated = db.Column(db.Boolean, default=False)
 
-    def update_status(self, new_status, detail_text=None):
+    def update_status(self, new_status, detail_text=None, is_simulated=False):
         if not self.history: 
             self.history = []
         # Append to history
@@ -25,6 +26,7 @@ class Case(db.Model):
         })
         self.current_status = new_status
         self.last_checked = datetime.utcnow()
+        self.is_simulated = is_simulated
 
         # Parse tracking and mailed date
         parsed_tracking = None

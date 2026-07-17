@@ -27,7 +27,7 @@ def add_case():
     if existing:
         flash(f"Case with receipt number {receipt_number} is already being tracked.", "warning")
         return redirect(url_for('cases.list_cases'))
-        
+    
     # Fetch actual status immediately on addition
     result = fetch_case_status(receipt_number)
     if not result:
@@ -39,7 +39,7 @@ def add_case():
         form_type=form_type,
         nickname=nickname
     )
-    new_case.update_status(result["status"], result["detail"])
+    new_case.update_status(result["status"], result["detail"], result.get("is_simulated", False))
     
     db.session.add(new_case)
     db.session.commit()
@@ -75,7 +75,7 @@ def edit_case(case_id):
                 return redirect(url_for('cases.edit_case', case_id=case_id))
                 
             case.receipt_number = receipt_number
-            case.update_status(result["status"], result["detail"])
+            case.update_status(result["status"], result["detail"], result.get("is_simulated", False))
             
         case.form_type = form_type
         case.nickname = nickname
@@ -106,8 +106,10 @@ def refresh_case(case_id):
         
     status = result["status"]
     detail = result["detail"]
-    if status != case.current_status:
-        case.update_status(status, detail)
+    is_sim = result.get("is_simulated", False)
+    
+    if status != case.current_status or case.is_simulated != is_sim:
+        case.update_status(status, detail, is_sim)
         flash(f"Status updated to: {status}", "success")
     else:
         case.last_checked = datetime.utcnow()
@@ -130,8 +132,9 @@ def refresh_all_cases():
         if result:
             status = result["status"]
             detail = result["detail"]
-            if status != case.current_status:
-                case.update_status(status, detail)
+            is_sim = result.get("is_simulated", False)
+            if status != case.current_status or case.is_simulated != is_sim:
+                case.update_status(status, detail, is_sim)
                 updated_count += 1
             else:
                 case.last_checked = datetime.utcnow()

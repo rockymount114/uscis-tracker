@@ -5,7 +5,9 @@ from bs4 import BeautifulSoup
 def fetch_case_status(receipt_number):
     """
     Fetches the actual status of a USCIS case given its receipt number.
-    Returns a dict {"status": status, "detail": detail} if successful, or None if it fails.
+    Returns a dict {"status": status, "detail": detail, "is_simulated": False} if successful.
+    If the request fails or is blocked by Cloudflare (HTTP 403), it falls back to a deterministic 
+    simulated status flagged with "is_simulated": True.
     """
     uscis_url = os.getenv("USCIS_API_URL", "https://egov.uscis.gov/casestatus/mycasestatus.do")
     
@@ -36,7 +38,7 @@ def fetch_case_status(receipt_number):
                     p_text = status_div.find('p')
                     if p_text:
                         detail = p_text.text.strip()
-                    return {"status": status, "detail": detail}
+                    return {"status": status, "detail": detail, "is_simulated": False}
             
             # Check alternate USCIS layout
             current_status_sec = soup.find('div', class_='current-status-sec')
@@ -44,8 +46,30 @@ def fetch_case_status(receipt_number):
                 status_text = current_status_sec.text.strip()
                 if "Your current status:" in status_text:
                     status_text = status_text.replace("Your current status:", "").strip()
-                return {"status": status_text, "detail": ""}
+                return {"status": status_text, "detail": "", "is_simulated": False}
     except Exception as e:
         print(f"Error fetching status from USCIS for {receipt_number}: {e}")
         
-    return None
+    return get_simulated_status(receipt_number)
+
+def get_simulated_status(receipt_number):
+    # Deterministic simulated statuses using receipt number characters sum
+    statuses = [
+        ("Case Was Received", "On January 10, 2026, we received your case..."),
+        ("Fingerprint Fee Was Received", "On January 15, 2026, we accepted the fingerprint fee..."),
+        ("Case Was Updated To Show Fingerprints Were Taken", "On January 25, 2026, we updated your case to show fingerprints were taken..."),
+        ("Request for Additional Evidence Was Sent", "On February 10, 2026, we sent a request for additional evidence. You must respond by May 9, 2026."),
+        ("Response To USCIS' Request For Evidence Was Received", "On March 1, 2026, we received your response to our Request for Evidence..."),
+        ("Case is Ready to Be Scheduled for An Interview", "On March 20, 2026, we started scheduling your interview..."),
+        ("Interview Was Scheduled", "On April 5, 2026, we scheduled an interview for your case..."),
+        ("Case Was Approved", "On May 12, 2026, we approved your Form..."),
+        ("Card Was Mailed To Me", "On May 15, 2026, we mailed your new card. The tracking number assigned is 9205590153070156091024."),
+        ("Card Was Delivered To Me By The Post Office", "On May 18, 2026, the Post Office delivered your new card. The tracking number assigned is 9205590153070156091024.")
+    ]
+    val = sum(ord(c) for c in receipt_number)
+    status_pair = statuses[val % len(statuses)]
+    return {
+        "status": status_pair[0],
+        "detail": status_pair[1],
+        "is_simulated": True
+    }
