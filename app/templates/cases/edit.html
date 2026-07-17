@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "components/case_form.html" import render_case_form %}
+
+{% block title %}Edit Case - USCIS Case Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in-up mt-5">
+    <div class="col-md-6">
+        <div class="card glass-card">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-4">
+                    <a href="{{ url_for('cases.list_cases') }}" class="btn btn-link text-secondary p-0 me-3" style="box-shadow: none;">
+                        <i class="fa-solid fa-arrow-left fs-4"></i>
+                    </a>
+                    <h4 class="card-title text-light mb-0" style="font-size: 1.35rem; font-weight: 700; border-left: 3px solid var(--accent-purple); padding-left: 0.5rem;">
+                        Edit Case Details
+                    </h4>
+                </div>
+                {{ render_case_form(url_for('cases.edit_case', case_id=case.id), case=case, form_types=form_types) }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

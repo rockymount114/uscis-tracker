@@ -1,0 +1,20 @@
+{% macro render_badge(status) %}
+    {% set s = (status or '') | lower %}
+    {% if 'approve' in s or 'deliver' in s or 'mail' in s %}
+        <span class="badge-status badge-status-approved">
+            <i class="fa-solid fa-circle-check me-1"></i>{{ status }}
+        </span>
+    {% elif 'fingerprint' in s or 'receive' in s or 'fee' in s %}
+        <span class="badge-status badge-status-info">
+            <i class="fa-solid fa-circle-info me-1"></i>{{ status }}
+        </span>
+    {% elif 'evidence' in s or 'interview' in s or 'ready' in s %}
+        <span class="badge-status badge-status-pending">
+            <i class="fa-solid fa-clock me-1"></i>{{ status }}
+        </span>
+    {% else %}
+        <span class="badge-status badge-status-action">
+            <i class="fa-solid fa-circle-exclamation me-1"></i>{{ status }}
+        </span>
+    {% endif %}
+{% endmacro %}

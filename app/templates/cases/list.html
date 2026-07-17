@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "components/case_card.html" import render_case_card %}
+{% from "components/case_form.html" import render_case_form %}
+
+{% block title %}Tracked Cases - USCIS Case Tracker{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4 fade-in-up">
+    <div class="col-md-8">
+        <h1 class="mb-1 text-light" style="font-weight: 800; font-size: 2.2rem; letter-spacing: -0.03em;">Tracked Cases</h1>
+        <p class="text-secondary mb-0">Add, edit, or check current processing status of USCIS applications.</p>
+    </div>
+    {% if cases %}
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <form action="{{ url_for('cases.refresh_all_cases') }}" method="POST" class="d-inline">
+                <button type="submit" class="btn btn-gradient-primary">
+                    <i class="fa-solid fa-arrows-rotate me-1.5"></i>Refresh All Cases
+                </button>
+            </form>
+        </div>
+    {% endif %}
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Add Case Form -->
+    <div class="col-lg-4 col-md-12 fade-in-up">
+        <div class="card glass-card">
+            <div class="card-body">
+                <h4 class="card-title text-light mb-4" style="font-size: 1.25rem; font-weight: 700; border-left: 3px solid var(--accent-purple); padding-left: 0.5rem;">
+                    Track New Case
+                </h4>
+                {{ render_case_form(url_for('cases.add_case'), form_types=form_types) }}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: Cases Grid -->
+    <div class="col-lg-8 col-md-12">
+        {% if not cases %}
+            <div class="card glass-card py-5 text-center fade-in-up">
+                <div class="card-body py-5">
+                    <div class="mb-3" style="color: var(--text-muted);">
+                        <i class="fa-regular fa-folder-open" style="font-size: 4rem;"></i>
+                    </div>
+                    <h4 class="text-light mb-2">No Cases Tracked Yet</h4>
+                    <p class="text-secondary mb-0">Use the form on the left to start tracking your first USCIS receipt number.</p>
+                </div>
+            </div>
+        {% else %}
+            <div class="row g-3">
+                {% for case in cases %}
+                    <div class="col-md-6 col-sm-12">
+                        {{ render_case_card(case) }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

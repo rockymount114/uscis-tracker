@@ -1,0 +1,36 @@
+{% macro render_case_form(action, case=None, form_types=[]) %}
+<form action="{{ action }}" method="POST">
+    <div class="mb-3">
+        <label for="receipt_number" class="form-label text-secondary fw-semibold">USCIS Receipt Number</label>
+        <input type="text" class="form-control form-control-custom font-monospace" id="receipt_number" name="receipt_number" 
+               placeholder="E.g., MSC2190123456" required pattern="[a-zA-Z]{3}[0-9]{10}" title="Must start with 3 letters followed by 10 digits"
+               value="{{ case.receipt_number if case else '' }}" style="letter-spacing: 0.1em; text-transform: uppercase;">
+        <div class="form-text text-muted" style="font-size: 0.75rem;">13-character receipt number starting with a 3-letter service center prefix.</div>
+    </div>
+    
+    <div class="mb-3">
+        <label for="form_type" class="form-label text-secondary fw-semibold">Form Type</label>
+        <select class="form-select form-control-custom" id="form_type" name="form_type" required>
+            <option value="" disabled {{ 'selected' if not case else '' }}>-- Select Form Type --</option>
+            {% for ft in form_types %}
+                <option value="{{ ft }}" {{ 'selected' if case and case.form_type == ft else '' }}>{{ ft }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="mb-3">
+        <label for="nickname" class="form-label text-secondary fw-semibold">Nickname (Optional)</label>
+        <input type="text" class="form-control form-control-custom" id="nickname" name="nickname" 
+               placeholder="E.g., Primary Applicant I-485" value="{{ case.nickname if case else '' }}">
+    </div>
+    
+    <div class="d-flex justify-content-end gap-2 mt-4">
+        {% if case %}
+            <a href="{{ url_for('cases.list_cases') }}" class="btn btn-glass px-4">Cancel</a>
+        {% endif %}
+        <button type="submit" class="btn btn-gradient-primary px-4">
+            {{ 'Save Changes' if case else 'Add Case' }}
+        </button>
+    </div>
+</form>
+{% endmacro %}
