@@ -12,8 +12,10 @@ class Case(db.Model):
     history = db.Column(db.JSON, default=list)
     last_checked = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    usps_tracking = db.Column(db.String(30), nullable=True)
+    mailed_date = db.Column(db.DateTime, nullable=True)
 
-    def update_status(self, new_status):
+    def update_status(self, new_status, detail_text=None):
         if not self.history: 
             self.history = []
         # Append to history
@@ -24,19 +26,45 @@ class Case(db.Model):
         self.current_status = new_status
         self.last_checked = datetime.utcnow()
 
-    @property
-    def usps_tracking(self):
+        # Parse tracking and mailed date
+        parsed_tracking = None
+        parsed_date = None
         import re
-        if not self.current_status:
-            return None
-        match = re.search(r'USPS Tracking:\s*([A-Z0-9]+)', self.current_status)
-        if match:
-            return match.group(1).replace(')', '').strip()
-        # Fallback regex for raw tracking number
-        match_raw = re.search(r'\b(9\d{21}|[A-Z]{2}\d{9}US)\b', self.current_status)
-        if match_raw:
-            return match_raw.group(1)
-        return None
+
+        if detail_text:
+            # Parse tracking number
+            tracking_match = re.search(r'\b(9\d{21}|[A-Z]{2}\d{9}US)\b', detail_text)
+            if tracking_match:
+                parsed_tracking = tracking_match.group(1)
+            
+            # Parse date (e.g., "On July 17, 2026...")
+            date_match = re.search(r'On\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})', detail_text)
+            if date_match:
+                try:
+                    parsed_date = datetime.strptime(date_match.group(1), "%B %d, %Y")
+                except ValueError:
+                    pass
+
+        # Fallback to status parsing for tracking
+        if not parsed_tracking and new_status:
+            match = re.search(r'USPS Tracking:\s*([A-Z0-9]+)', new_status)
+            if match:
+                parsed_tracking = match.group(1).replace(')', '').strip()
+            else:
+                match_raw = re.search(r'\b(9\d{21}|[A-Z]{2}\d{9}US)\b', new_status)
+                if match_raw:
+                    parsed_tracking = match_raw.group(1)
+
+        # Fallback for mailed date
+        if not parsed_date and new_status:
+            s = new_status.lower()
+            if 'deliver' in s or 'mail' in s:
+                parsed_date = datetime.utcnow()
+
+        if parsed_tracking:
+            self.usps_tracking = parsed_tracking
+        if parsed_date:
+            self.mailed_date = parsed_date
 
     @property
     def service_center(self):

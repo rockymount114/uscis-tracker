@@ -28,15 +28,18 @@ def add_case():
         flash(f"Case with receipt number {receipt_number} is already being tracked.", "warning")
         return redirect(url_for('cases.list_cases'))
         
-    # Fetch status immediately on addition
-    status = fetch_case_status(receipt_number)
-    
+    # Fetch actual status immediately on addition
+    result = fetch_case_status(receipt_number)
+    if not result:
+        flash(f"Could not retrieve status from USCIS for receipt number {receipt_number}. Please verify the number and try again later.", "danger")
+        return redirect(url_for('cases.list_cases'))
+        
     new_case = Case(
         receipt_number=receipt_number,
         form_type=form_type,
         nickname=nickname
     )
-    new_case.update_status(status)
+    new_case.update_status(result["status"], result["detail"])
     
     db.session.add(new_case)
     db.session.commit()
@@ -64,10 +67,15 @@ def edit_case(case_id):
             if existing:
                 flash(f"Another case with receipt number {receipt_number} is already tracked.", "warning")
                 return redirect(url_for('cases.edit_case', case_id=case_id))
-            case.receipt_number = receipt_number
+            
             # Fetch updated status for the new number
-            status = fetch_case_status(receipt_number)
-            case.update_status(status)
+            result = fetch_case_status(receipt_number)
+            if not result:
+                flash(f"Could not retrieve status from USCIS for {receipt_number}. Update aborted.", "danger")
+                return redirect(url_for('cases.edit_case', case_id=case_id))
+                
+            case.receipt_number = receipt_number
+            case.update_status(result["status"], result["detail"])
             
         case.form_type = form_type
         case.nickname = nickname
@@ -90,10 +98,16 @@ def delete_case(case_id):
 @cases_bp.route('/<int:case_id>/refresh', methods=['POST'])
 def refresh_case(case_id):
     case = Case.query.get_or_404(case_id)
-    status = fetch_case_status(case.receipt_number)
+    result = fetch_case_status(case.receipt_number)
     
+    if not result:
+        flash(f"Could not retrieve status from USCIS for {case.receipt_number} at this time.", "danger")
+        return redirect(url_for('cases.list_cases'))
+        
+    status = result["status"]
+    detail = result["detail"]
     if status != case.current_status:
-        case.update_status(status)
+        case.update_status(status, detail)
         flash(f"Status updated to: {status}", "success")
     else:
         case.last_checked = datetime.utcnow()
@@ -110,17 +124,23 @@ def refresh_all_cases():
         return redirect(url_for('cases.list_cases'))
         
     updated_count = 0
+    failed_count = 0
     for case in cases:
-        status = fetch_case_status(case.receipt_number)
-        if status != case.current_status:
-            case.update_status(status)
-            updated_count += 1
+        result = fetch_case_status(case.receipt_number)
+        if result:
+            status = result["status"]
+            detail = result["detail"]
+            if status != case.current_status:
+                case.update_status(status, detail)
+                updated_count += 1
+            else:
+                case.last_checked = datetime.utcnow()
         else:
-            case.last_checked = datetime.utcnow()
+            failed_count += 1
             
     db.session.commit()
-    if updated_count > 0:
-        flash(f"Checked {len(cases)} cases. {updated_count} status updates found!", "success")
+    if failed_count > 0:
+        flash(f"Checked {len(cases)} cases. {updated_count} updates found. ({failed_count} cases failed to connect to USCIS)", "warning")
     else:
-        flash(f"Checked {len(cases)} cases. All statuses are up-to-date.", "info")
+        flash(f"Checked {len(cases)} cases. {updated_count} status updates found!", "success" if updated_count > 0 else "info")
     return redirect(url_for('cases.list_cases'))

@@ -48,6 +48,11 @@
                     <a href="https://tools.usps.com/go/TrackConfirmAction?tLabels={{ case.usps_tracking }}" target="_blank" class="btn btn-sm btn-glass text-cyan d-inline-flex align-items-center gap-1.5 py-1 px-2.5" style="font-size: 0.7rem; background: rgba(6, 182, 212, 0.08); border-color: rgba(6, 182, 212, 0.3);">
                         <i class="fa-solid fa-truck-fast"></i> Track USPS: <span class="font-monospace fw-semibold">{{ case.usps_tracking }}</span>
                     </a>
+                    {% if case.mailed_date %}
+                        <div class="text-secondary mt-1" style="font-size: 0.65rem;">
+                            <i class="fa-regular fa-calendar-check me-1"></i>Mailed: {{ case.mailed_date.strftime('%Y-%m-%d') }}
+                        </div>
+                    {% endif %}
                 </div>
             {% endif %}
             
