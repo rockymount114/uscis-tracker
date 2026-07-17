@@ -122,10 +122,10 @@ Use Chart.js 4.x via CDN in base.html. All charts must get data from `/api/*` vi
 ```
 
 ### 2. `.env.example`
-```
+```env
 SECRET_KEY=change-this-to-a-random-string
 DATABASE_URL=sqlite:///cases.db
-`# For docker: DATABASE_URL=postgresql://postgres:postgres@db:5432/cases_db`
+# For docker: DATABASE_URL=postgresql://postgres:postgres@db:5432/cases_db
 USCIS_API_URL=https://egov.uscis.gov/casestatus/mycasestatus.do
 FLASK_ENV=development
 ```
